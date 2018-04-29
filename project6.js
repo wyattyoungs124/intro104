@@ -128,21 +128,44 @@ function loadData() {
 }
 
 function saveData() {
+    // Create blank strings for eventual text file output.
     let outstring = "";
     let transtring = "";
+
+    // Sorting the client IDs into a new array.
     let ids = Array.from(clients.keys());
     ids.sort((a, b) => {return b - a});
+
+    // Loop over clients by IDs in order.
     for (let id of ids) {
         let client = clients.get(id);
+        if (!client) {
+            continue; // If no client, skip this client.
+        }
+
+        // Add line to outfile for this client's data. Using CSV (comma-separated value) format.
         outstring += `${id},${client.first},${client.last},${client.total()}\n`;
 
+        // Now process client's transactions.
+        // First, sorting the transactions by week order.
         let trans = Array.from(client.transactions.values());
         trans.sort((a,b) => {return b.week - a.week});
+
+        // Loop over transactions in given order.
         for (let tran of trans) {
+
+            // Same as before, adding to the transtring CSV output.
             transtring += `${tran.id},${tran.service},${tran.price},${tran.week}\n`;
         }
 
     }
+
+    // By this point we are out of the for loop. All data has been converted to a text file.
+
+    // IO.writeFileSync is 'write to disk.' the Sync means Synchronous, or 'right now.'
+    // We specify this because NodeJS also has asynchronous mode, where it may wait on the
+    // operating system to do it whenever it feels like. We want it done NOW.
+    // 'utf8' is the file encoding. Basic, standard text file.
     let outFile = IO.writeFileSync('data/curlClients.csv', outstring, 'utf8');
     let tranFile = IO.writeFileSync('data/curlTrans.csv', transtring, 'utf8');
 
