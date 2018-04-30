@@ -10,7 +10,7 @@ const IO = require('fs'); // For file I/O
 //section 2
 let runProgram = 1;
 let clients = new Map();
-let allTrans = [];
+let trans = new Map();
 
 //Classes
 class User {
@@ -19,10 +19,12 @@ class User {
         this.firstName = first;
         this.lastName = last;
         this.transactions = new Map();
+        this.coupon = 0;
     }
-    total(){
+
+    total() {
         let output = 0;
-        for(let tran of this.transactions.values()){
+        for(let tran of this.transactions.values()) {
             output += tran.price;
         }
         return output;
@@ -30,8 +32,9 @@ class User {
 }
 
 class Invoice {
-    constructor(id,service, price, week){
+    constructor(id, userID, service, price, week) {
         this.id = id;
+        this.userID = userID;
         this.service = service;
         this.price = price;
         this.week = week;
@@ -39,8 +42,8 @@ class Invoice {
 }
 
 //section 3
-function main (){
-    while(runProgram){
+function main () {
+    while(runProgram) {
     startCurlUp();
     }
 }
@@ -50,20 +53,20 @@ main();
 
 function startCurlUp() {
     console.log("*****************MAIN*MENU****************");
-    console.log("]][[-*1*-]][[Add[]New[]Client]][[-*1*-]][[");
-    console.log("]][[-*2*-]][[Client[]Archive]]][[-*2*-]][[");
-    console.log("]][[-*3*-]][[Add[]A[]Service]]][[-*3*-]][[");
-    console.log("]][[-*4*-]][Save[]All[]Data]]][[[-*4*-]][[");
-    console.log("]][[-*5*-]][Service[]Archive]]][[-*5*-]][[");
-    console.log("]][[-*6*-]][[[Exit[]Program]]]][[-*6*-]][[");
+    console.log("]][[-*1*-]][[Add--New--Client]][[-*1*-]][[");
+    console.log("]][[-*2*-]][Service--Archive]]][[-*2*-]][[");
+    console.log("]][[-*3*-]][[Add--A--Service]]][[-*3*-]][[");
+    console.log("]][[-*4*-]][Save--All--Data]]][[[-*4*-]][[");
+    console.log("]][[-*5*-]][Load--All--Data]]][[[-*5*-]][[");
+    console.log("]][[-*6*-]][[[Exit--Program]]]][[-*6*-]][[");
     console.log("******************************************");
 
-    switch(REF.inputPosNumber("]][]]][[]][[Choice[]Selection]][[]][[]=>  ")){
+    switch(REF.inputPosNumber("]][]]][[]][[Choice--Selection]][[]][[]=>  ")){
         case 1:
             newClient();
             break;
         case 2:
-            loadClients();
+            displayData();
             break;
         case 3:
             addService();
@@ -86,20 +89,122 @@ function startCurlUp() {
 
 //Listed below are all of the menu functions.
 
-function newClient(){
+function newClient() {
     let id = REF.inputNumber("************Enter**new**id**number******=>  ");
-    if(clients.has(id)){
+    if(clients.has(id)) {
         console.log("ERROR: ID already in use!");
         return;
     }
-    let firstName = REF.inputString("************Enter**First**Name**********=>  ");
-    let lastName = REF.inputString ("************Enter**Last**Name***********=>  ");
-    clients.set(id, new Person(id,firstName,lastName));
+    let firstName = REF.inputString("************Enter--First--Name**********=>  ");
+    let lastName = REF.inputString ("************Enter--Last--Name***********=>  ");
+    clients.set(id, new User(id, firstName, lastName));
 }
 
-function loadClients(){
+function loadData() {
+
+        // Clear out global variables. Just in case.
+        clients = new Map();
+        trans = new Map();
+
+        // Create file handle to our save file.
+        let dataFile = IO.readFileSync(`data/curlClient.csv`, 'utf8');
+
+        // Read in the text from the datafile. Split it into an array based on new lines.
+        // Each line = an element of the array.
+        let lines = dataFile.toString().split(/\r?\n/);
+
+        // Loop over each line of the save file...
+        for (let line of lines) {
+            // The if check makes sure that we only load if the line has any data in it.
+            if(line) {
+                // Split the line by commas. This separates user id, first name, last name, etc.
+                let data = line.toString().split(/,/);
+
+                // Convert the data into appropriate types (eg, Number()), create User object, put it into the clients map.
+                clients.set(Number(data[0]), new User(Number(data[0]),data[1],data[2]));
+            }
+        }
+
+        // Now we'll load transactions.
+    dataFile = IO.readFileSync(`data/curlTrans.csv`,  'utf8');
+    lines = dataFile.toString().split(/\r?\n/);
+
+    for(let line of lines) {
+        if(line) {
+            let client = clients.get(Number(data[1]));
+            if(client) {
+                let data = line.toString().split(/,/);
+                let new_trans = new Invoice(Number(data[0]),Number(data[1]),data[2],Number(data[3]),Number(data[4]));
+                trans.set(new_trans.id, new_trans);
+                client.transactions.set(new_trans.id, new_trans);
+            }
+            else {
+                console.log(`Could not load Transaction ${data[0]}. Client not found.`);
+            }
+        }
+    }
+
+}
+
+function addService() {
+    let curUser = clients.get(REF.inputPosNumber("************Enter--customer--ID--number**=>  "));
+    if (!curUser) {
+        console.log("ERROR: customer ID does not exist! ");
+        return;
+    }
+    let goodid = false, invoiceID;
+
+    while(!goodid) {
+        invoiceID = REF.inputPosNumber("************Enter--invoice--ID--number**=>  ");
+        if(!trans.has(invoiceID)) {
+            goodid = true;
+        }
+        else {
+            console.log("Invoice ID already used. Please try again.");
+        }
+    }
+    let serv = REF.inputString("************Enter--given--service**=>  ");
+    let week = REF.inputPosNumber("************Enter--current--week--number**=>  ");
+    let price = REF.inputPosNumber("************Enter--purchase--price**=>  ");
+
+    let new_invoice = new Invoice(invoiceID, curUser.id, serv, price, week);
+    curUser.transactions.set(invoiceID, new_invoice);
+    trans.set(invoiceID, new_invoice);
+
+    if(curUser.total() > 750 && !curUser.coupon) {
+        console.log ("|*|Service exceeded $750.00, take a complimentary coupon!|*|");
+        curUser.coupon = 1;
+    }
+
+}
+
+function saveData() {
+    let outClients = "";//blank strings for file output
+    let outTrans = "";//blank strings for file output
+
+    //sorting the client ID's into a new array
+    let sortClients = Array.from(clients.values());
+    sortClients.sort((a, b) => {return b.id - a.id});
+
+    //loops over clients. they've already been sorted.
+    for(let client of sortClients) {
+       outClients += `${client.id},${client.firstName},${client.lastName},${client.coupon},${client.total()}\n`;
+
+        let trans = Array.from(client.transactions.values());
+        trans.sort((a,b) => {return b.week - a.week});
+
+        for(let tran of trans) {
+            outTrans += `${tran.id},${tran.userID},${tran.service},${tran.price},${tran.week}\n`;
+        }
+
+    }
+    let clientFile = IO.writeFileSync('data/curlClient.csv', outClients, 'utf8');
+    let transFile = IO.writeFileSync('data/curlTrans.csv', outTrans, 'utf8');
+}
+
+function displayData(){
     console.log(clients);
-}
-function addService(){
-
+    for(let tran of trans) {
+        console.log(tran);
+    }
 }

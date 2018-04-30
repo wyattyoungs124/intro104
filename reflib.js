@@ -49,3 +49,21 @@ function inputPosNumber(display, recursive = true){
 }
 
 exports.inputPosNumber = inputPosNumber;
+
+
+// Gets a Date. Accepts anything that a Date() object constructor does.
+function inputDate(display, recursive = true) {
+    let input = new Date(inputString(display, persistent));
+    if(isNaN(input.getTime())) {
+        if(recursive) {
+            console.log("ERROR: Response must be a date! Please try again!");
+            input = inputDate(display, recursive);
+        }
+        else {
+            throw "ERROR: Response must be a date!";
+        }
+    }
+    return input;
+}
+
+exports.inputDate = inputDate;

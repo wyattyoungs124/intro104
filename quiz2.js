@@ -5,7 +5,7 @@
  *   @summary Code demonstration: Collections (Arrays) :: created: 6.13.2017
  *   @todo Nothing
  */
-
+//
 "use strict";   //enabling strict mode
 const PROMPT = require('readline-sync'); //library call
 
